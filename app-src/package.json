@@ -9,6 +9,7 @@
   "private": true,
   "dependencies": {
     "aws-sdk": "^2.662.0",
+    "aws-xray-sdk-core": "^3.2.0",
     "busboy": "^0.3.1",
     "sharp": "^0.25.2"
   },

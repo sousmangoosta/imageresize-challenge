@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  GithubUSER:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: 'aircall-github-user'
+  GithubUSERPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+        PolicyName: 'github-user-GithubUSERPolicy'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: 'sts:AssumeRole'
+              Resource: !GetAtt GithubRole.Arn
+        Users: [!Ref GithubUSER]
+  GithubRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'github-user-GithubRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Join [':', ['arn:aws:iam','', !Ref AWS::AccountId,
+                                !Join ['/', ['user', !Ref GithubUSER]]
+              ]]
+            Action: 'sts:AssumeRole'
+  GithubPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'GithubPolicy'
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'cloudformation:CreateStack'
+              - 'cloudformation:UpdateStack'
+              - 'cloudformation:Get*'
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:*ChangeSet'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 's3:CreateBucket'
+              - 's3:PutBucketPublicAccessBlock'
+            Resource:
+              - 'arn:aws:s3:::rclaveau-imageresizer-lambda-source'
+              - 'arn:aws:s3:::rclaveau-imageresizer-uploads'
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+            Resource: 'arn:aws:s3:::rclaveau-imageresizer-lambda-source/function.zip'
+          - Effect: Allow
+            Action:
+              - 'lambda:GetFunction'
+              - 'lambda:CreateFunction'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:AddPermission'
+              - 'lambda:RemovePermission'
+            Resource: !Join [':',['arn:aws:lambda',!Ref AWS::Region,!Ref AWS::AccountId,'function',
+                                  'rclaveau-imageresizer-lambda']]
+          - Effect: Allow
+            Action:
+              - 'iam:CreateRole'
+              - 'iam:PutRolePolicy'
+              - 'iam:PassRole'
+              - 'iam:GetRole'
+              - 'iam:getRolePolicy'
+              - 'iam:AttachRolePolicy'
+              - 'iam:DetachRolePolicy'
+              - 'iam:DeleteRole'
+            Resource:
+              - !Join [':', ['arn:aws:iam','',!Ref AWS::AccountId,'role/ImageResizer-LambdaRole']]
+              - !Join [':', ['arn:aws:iam','',!Ref AWS::AccountId,'role/ImageResizer-CloudWatchRole']]
+          - Effect: Allow
+            Action:
+              - 'apigateway:GET'
+              - 'apigateway:POST'
+              - 'apigateway:DELETE'
+              - 'apigateway:PUT'
+              - 'apigateway:PATCH'
+            Resource:
+              - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'','/restapis']]
+              - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'','/restapis/*']]
+          - Effect: Allow
+            Action:
+              - 'apigateway:PATCH'
+            Resource:
+              - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'','/account']]
+          - Effect: Allow
+            Action:
+              - 'iam:CreateServiceLinkedRole'
+            Resource:
+              - !Join [':', ['arn:aws:iam','',!Ref AWS::AccountId,
+                             'role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway']]
+          - Effect: Allow
+            Action:
+              - 'acm:RequestCertificate'
+              - 'acm:DescribeCertificate'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'apigateway:POST'
+            Resource:
+              - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'','/domainnames']]
+              - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'',
+                             '/domainnames/imageresizer.aws.aliel.fr/basepathmappings']]
+          - Effect: Allow
+            Action: 'apigateway:GET'
+            Resource: !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'',
+                             '/domainnames/imageresizer.aws.aliel.fr']]
+          - Effect: Allow
+            Action:
+              - 'route53:GetHostedZone'
+              - 'route53:ChangeResourceRecordSets'
+            Resource: 'arn:aws:route53:::hostedzone/Z2BGIPA6PPQEOH'
+          - Effect: Allow
+            Action: 'route53:GetChange'
+            Resource: 'arn:aws:route53:::change/*'
+      Roles:
+        - !Ref GithubRole

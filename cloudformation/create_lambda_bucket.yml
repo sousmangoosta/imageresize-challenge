@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  LambdaZipsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: rclaveau-imageresizer-lambda-source
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True

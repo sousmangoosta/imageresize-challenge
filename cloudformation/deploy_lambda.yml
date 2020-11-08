@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  LambdaBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: rclaveau-imageresizer-uploads
+  LambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'ImageResizer-LambdaRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'lambda.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'LambdaSendDataToS3'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:PutObjectAcl'
+                Resource: !Join ['/',[!GetAtt LambdaBucket.Arn,'*']]
+                Condition:
+                  StringEquals:
+                    s3:x-amz-acl:
+                      - 'public-read'
+        - PolicyName: 'LambdaToXray'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'xray:PutTraceSegments'
+                  - 'xray:PutTelemetryRecords'
+                Resource: '*'
+        - PolicyName: 'LambdaToCloudwatch'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: !Join [':',['arn:aws:logs',!Ref AWS::Region,!Ref AWS::AccountId,
+                                      'log-group','/aws/lambda/rclaveau-imageresizer-lambda','*']]
+  Api2LambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Join [':',['arn:aws:execute-api',!Ref AWS::Region,!Ref AWS::AccountId,
+                             !Join ['',[!Ref RestApi,'/*/POST/image']]
+                            ]]
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: rclaveau-imageresizer-lambda
+      Handler: app.lambdaHandler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        S3Bucket: rclaveau-imageresizer-lambda-source
+        S3Key: function.zip
+      Environment:
+        Variables:
+          S3_BUCKET: rclaveau-imageresizer-uploads
+      Runtime: nodejs12.x
+      Timeout: 5
+      TracingConfig:
+        Mode: Active
+  RestApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: 'rclaveau-imageresizer-api'
+      BinaryMediaTypes: ['multipart/form-data']
+      EndpointConfiguration:
+        Types: ['REGIONAL']
+  ProxyResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !GetAtt
+        - RestApi
+        - RootResourceId
+      PathPart: 'image'
+  ProxyMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ProxyResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Join ['/',[!Join [':',['arn:aws:apigateway',!Ref AWS::Region,'lambda',
+                                      'path/2015-03-31/functions']],
+                        !GetAtt LambdaFunction.Arn,
+                        'invocations']]
+  Deployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref RestApi
+    DependsOn: ProxyMethod
+  ApiStage:
+    Type: 'AWS::ApiGateway::Stage'
+    Properties:
+      StageName: Prod
+      Description: Prod Stage
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      TracingEnabled: True
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          DataTraceEnabled: True
+          LoggingLevel: INFO
+  CloudWatchRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'ImageResizer-CloudWatchRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs']
+  Account:
+    Type: 'AWS::ApiGateway::Account'
+    Properties:
+      CloudWatchRoleArn: !GetAtt
+        - CloudWatchRole
+        - Arn
+  ApiCert:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: 'imageresizer.aws.aliel.fr'
+      ValidationMethod: 'DNS'
+  ApiDomainName:
+    Type: 'AWS::ApiGateway::DomainName'
+    Properties:
+      DomainName: 'imageresizer.aws.aliel.fr'
+      RegionalCertificateArn: !Ref ApiCert
+      EndpointConfiguration:
+        Types: ['REGIONAL']
+  Domain2Api:
+    Type: 'AWS::ApiGateway::BasePathMapping'
+    Properties:
+      DomainName: !Ref ApiDomainName
+      RestApiId: !Ref RestApi
+      Stage: !Ref ApiStage
+  ApiAliasDNS:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Ref ApiDomainName
+      Type: 'A'
+      HostedZoneId: 'Z2BGIPA6PPQEOH'
+      AliasTarget:
+        DNSName: !GetAtt ApiDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
