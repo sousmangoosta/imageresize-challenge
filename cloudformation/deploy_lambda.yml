@@ -1,9 +1,31 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  GithubUserName:
+    Type: String
+    Default: 'aircall-github-user'
+  LambdaSourceBucket:
+    Type: String
+    Default: 'rclaveau-imageresizer-lambda-source'
+  LambdaUploadBucket:
+    Type: String
+    Default: 'rclaveau-imageresizer-uploads'
+  LambdaFunctionName:
+    Type: String
+    Default: 'rclaveau-imageresizer-lambda'
+  UrlDomainName:
+    Type: String
+    Default: 'imageresizer.aws.aliel.fr'
+  HostedZoneId:
+    Type: String
+    Default: 'Z2BGIPA6PPQEOH'
+  RestApiName:
+    Type: String
+    Default: 'rclaveau-imageresizer-api'
 Resources:
   LambdaBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: rclaveau-imageresizer-uploads
+      BucketName: !Ref LambdaUploadBucket
   LambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -48,7 +70,7 @@ Resources:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: !Join [':',['arn:aws:logs',!Ref AWS::Region,!Ref AWS::AccountId,
-                                      'log-group','/aws/lambda/rclaveau-imageresizer-lambda','*']]
+                                      'log-group',!Sub '/aws/lambda/${LambdaFunctionName}','*']]
   Api2LambdaPermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -61,15 +83,15 @@ Resources:
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: rclaveau-imageresizer-lambda
+      FunctionName: !Ref LambdaFunctionName
       Handler: app.lambdaHandler
       Role: !GetAtt LambdaRole.Arn
       Code:
-        S3Bucket: rclaveau-imageresizer-lambda-source
+        S3Bucket: !Ref LambdaSourceBucket
         S3Key: function.zip
       Environment:
         Variables:
-          S3_BUCKET: rclaveau-imageresizer-uploads
+          S3_BUCKET: !Ref LambdaUploadBucket
       Runtime: nodejs12.x
       Timeout: 5
       TracingConfig:
@@ -77,7 +99,7 @@ Resources:
   RestApi:
     Type: 'AWS::ApiGateway::RestApi'
     Properties:
-      Name: 'rclaveau-imageresizer-api'
+      Name: !Ref RestApiName
       BinaryMediaTypes: ['multipart/form-data']
       EndpointConfiguration:
         Types: ['REGIONAL']
@@ -143,12 +165,12 @@ Resources:
   ApiCert:
     Type: 'AWS::CertificateManager::Certificate'
     Properties:
-      DomainName: 'imageresizer.aws.aliel.fr'
+      DomainName: !Ref UrlDomainName
       ValidationMethod: 'DNS'
   ApiDomainName:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
-      DomainName: 'imageresizer.aws.aliel.fr'
+      DomainName: !Ref UrlDomainName
       RegionalCertificateArn: !Ref ApiCert
       EndpointConfiguration:
         Types: ['REGIONAL']
@@ -163,7 +185,7 @@ Resources:
     Properties:
       Name: !Ref ApiDomainName
       Type: 'A'
-      HostedZoneId: 'Z2BGIPA6PPQEOH'
+      HostedZoneId: !Ref HostedZoneId
       AliasTarget:
         DNSName: !GetAtt ApiDomainName.RegionalDomainName
         HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId

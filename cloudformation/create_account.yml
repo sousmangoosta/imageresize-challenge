@@ -1,9 +1,28 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  GithubUserName:
+    Type: String
+    Default: 'aircall-github-user'
+  LambdaSourceBucket:
+    Type: String
+    Default: 'rclaveau-imageresizer-lambda-source'
+  LambdaUploadBucket:
+    Type: String
+    Default: 'rclaveau-imageresizer-uploads'
+  LambdaFunctionName:
+    Type: String
+    Default: 'rclaveau-imageresizer-lambda'
+  UrlDomainName:
+    Type: String
+    Default: 'imageresizer.aws.aliel.fr'
+  HostedZoneId:
+    Type: String
+    Default: 'Z2BGIPA6PPQEOH'
 Resources:
   GithubUSER:
     Type: 'AWS::IAM::User'
     Properties:
-      UserName: 'aircall-github-user'
+      UserName: !Ref GithubUserName
   GithubUSERPolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -24,9 +43,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Join [':', ['arn:aws:iam','', !Ref AWS::AccountId,
-                                !Join ['/', ['user', !Ref GithubUSER]]
-              ]]
+              AWS: !GetAtt GithubUSER.Arn
             Action: 'sts:AssumeRole'
   GithubPolicy:
     Type: 'AWS::IAM::Policy'
@@ -48,13 +65,13 @@ Resources:
               - 's3:CreateBucket'
               - 's3:PutBucketPublicAccessBlock'
             Resource:
-              - 'arn:aws:s3:::rclaveau-imageresizer-lambda-source'
-              - 'arn:aws:s3:::rclaveau-imageresizer-uploads'
+              - !Sub 'arn:aws:s3:::${LambdaSourceBucket}'
+              - !Sub 'arn:aws:s3:::${LambdaUploadBucket}'
           - Effect: Allow
             Action:
               - 's3:PutObject'
               - 's3:GetObject'
-            Resource: 'arn:aws:s3:::rclaveau-imageresizer-lambda-source/function.zip'
+            Resource: !Sub 'arn:aws:s3:::${LambdaSourceBucket}/function.zip'
           - Effect: Allow
             Action:
               - 'lambda:GetFunction'
@@ -63,7 +80,7 @@ Resources:
               - 'lambda:AddPermission'
               - 'lambda:RemovePermission'
             Resource: !Join [':',['arn:aws:lambda',!Ref AWS::Region,!Ref AWS::AccountId,'function',
-                                  'rclaveau-imageresizer-lambda']]
+                                  !Ref LambdaFunctionName]]
           - Effect: Allow
             Action:
               - 'iam:CreateRole'
@@ -108,16 +125,16 @@ Resources:
             Resource:
               - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'','/domainnames']]
               - !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'',
-                             '/domainnames/imageresizer.aws.aliel.fr/basepathmappings']]
+                             !Sub '/domainnames/${UrlDomainName}/basepathmappings']]
           - Effect: Allow
             Action: 'apigateway:GET'
             Resource: !Join [':', ['arn:aws:apigateway',!Ref AWS::Region,'',
-                             '/domainnames/imageresizer.aws.aliel.fr']]
+                             !Sub '/domainnames/${UrlDomainName}']]
           - Effect: Allow
             Action:
               - 'route53:GetHostedZone'
               - 'route53:ChangeResourceRecordSets'
-            Resource: 'arn:aws:route53:::hostedzone/Z2BGIPA6PPQEOH'
+            Resource: !Sub 'arn:aws:route53:::hostedzone/${HostedZoneId}'
           - Effect: Allow
             Action: 'route53:GetChange'
             Resource: 'arn:aws:route53:::change/*'
