@@ -16,7 +16,8 @@ jobs:
         with:
           node-version: 12.x
       - run: cd app-src && npm ci
-      - run: cd app-src && zip -r ../function.zip *
+      - run: cd app-src && zip -r ../node_modules_layer.zip node_modules *.json
+      - run: cd app-src && zip ../function.zip *.js
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -36,7 +37,8 @@ jobs:
           no-fail-on-empty-changeset: 1
 
       - name: Upload Lambda source code to Bucket
-        run: pip install awscli && aws s3 cp function.zip s3://rclaveau-imageresizer-lambda-source
+        run: pip install awscli && aws s3 cp function.zip s3://rclaveau-imageresizer-lambda-source \
+             && aws s3 cp node_modules_layer.zip s3://rclaveau-imageresizer-lambda-source
 
       - name: Deploy to AWS CloudFormation
         uses: aws-actions/aws-cloudformation-github-deploy@v1

@@ -12,6 +12,9 @@ Parameters:
   LambdaFunctionName:
     Type: String
     Default: 'rclaveau-imageresizer-lambda'
+  LambdaLayerName:
+    Type: String
+    Default: 'rclaveau-imageresizer-lambda-layer'
   UrlDomainName:
     Type: String
     Default: 'imageresizer.aws.aliel.fr'
@@ -92,10 +95,19 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref LambdaUploadBucket
+      Layers: [!Ref LambdaModulesLayer]
       Runtime: nodejs12.x
       Timeout: 5
       TracingConfig:
         Mode: Active
+  LambdaModulesLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes: ['nodejs12.x']
+      Content:
+        S3Bucket: !Ref LambdaSourceBucket
+        S3Key: node_modules_layer.zip
+      LayerName: !Ref LambdaLayerName
   RestApi:
     Type: 'AWS::ApiGateway::RestApi'
     Properties:
