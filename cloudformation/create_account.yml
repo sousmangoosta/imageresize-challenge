@@ -74,7 +74,9 @@ Resources:
             Action:
               - 's3:PutObject'
               - 's3:GetObject'
-            Resource: !Sub 'arn:aws:s3:::${LambdaSourceBucket}/function.zip'
+            Resource:
+              - !Sub 'arn:aws:s3:::${LambdaSourceBucket}/function.zip'
+              - !Sub 'arn:aws:s3:::${LambdaSourceBucket}/node_modules_layer.zip'
           - Effect: Allow
             Action:
               - 'lambda:GetFunction'
