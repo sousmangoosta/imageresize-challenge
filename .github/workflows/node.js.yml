@@ -37,7 +37,7 @@ jobs:
           no-fail-on-empty-changeset: 1
 
       - name: Upload Lambda source code to Bucket
-        run: pip install awscli && aws s3 cp function.zip s3://rclaveau-imageresizer-lambda-source \
+        run: aws s3 cp function.zip s3://rclaveau-imageresizer-lambda-source \
              && aws s3 cp node_modules_layer.zip s3://rclaveau-imageresizer-lambda-source
 
       - name: Deploy to AWS CloudFormation
