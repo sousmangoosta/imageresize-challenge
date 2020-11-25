@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 12.x
-      - run: cd app-src && npm ci
+      - run: cd app-src && npm ci --production
       - run: cd app-src && zip -r ../node_modules_layer.zip node_modules *.json
       - run: cd app-src && zip ../function.zip *.js
 

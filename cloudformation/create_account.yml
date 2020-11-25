@@ -81,6 +81,7 @@ Resources:
             Action:
               - 'lambda:GetFunction'
               - 'lambda:CreateFunction'
+              - 'lambda:UpdateFunctionConfiguration'
               - 'lambda:GetFunctionConfiguration'
               - 'lambda:AddPermission'
               - 'lambda:RemovePermission'
