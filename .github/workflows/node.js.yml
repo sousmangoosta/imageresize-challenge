@@ -34,6 +34,7 @@ jobs:
         with:
           name: ImageResizer-Bucket
           template: cloudformation/create_lambda_bucket.yml
+          parameter-overrides: LambdaSourceBucket=rclaveau-imageresizer-lambda-source
           no-fail-on-empty-changeset: 1
 
       - name: Upload Lambda source code to Bucket
@@ -47,4 +48,13 @@ jobs:
           name: ImageResizer
           template: cloudformation/deploy_lambda.yml
           capabilities: CAPABILITY_NAMED_IAM
+          parameter-overrides: >-
+            GithubUserName=aircall-github-user,
+            LambdaSourceBucket=rclaveau-imageresizer-lambda-source,
+            LambdaUploadBucket=rclaveau-imageresizer-uploads,
+            LambdaFunctionName=rclaveau-imageresizer-lambda,
+            LambdaLayerName=rclaveau-imageresizer-lambda-layer,
+            UrlDomainName=imageresizer.aws.aliel.fr,
+            HostedZoneId=Z2BGIPA6PPQEOH,
+            RestApiName=rclaveau-imageresizer-api
           no-fail-on-empty-changeset: 1

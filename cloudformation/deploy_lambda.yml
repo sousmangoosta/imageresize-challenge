@@ -2,28 +2,20 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   GithubUserName:
     Type: String
-    Default: 'aircall-github-user'
   LambdaSourceBucket:
     Type: String
-    Default: 'rclaveau-imageresizer-lambda-source'
   LambdaUploadBucket:
     Type: String
-    Default: 'rclaveau-imageresizer-uploads'
   LambdaFunctionName:
     Type: String
-    Default: 'rclaveau-imageresizer-lambda'
   LambdaLayerName:
     Type: String
-    Default: 'rclaveau-imageresizer-lambda-layer'
   UrlDomainName:
     Type: String
-    Default: 'imageresizer.aws.aliel.fr'
   HostedZoneId:
     Type: String
-    Default: 'Z2BGIPA6PPQEOH'
   RestApiName:
     Type: String
-    Default: 'rclaveau-imageresizer-api'
 Resources:
   LambdaBucket:
     Type: 'AWS::S3::Bucket'

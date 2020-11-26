@@ -2,7 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   LambdaSourceBucket:
     Type: String
-    Default: 'rclaveau-imageresizer-lambda-source'
 Resources:
   LambdaZipsBucket:
     Type: AWS::S3::Bucket
